@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Chatbot • Modern Responsive UI</title>
+  <meta name="description" content="Minimal, accessible, responsive AI chatbot UI — sends messages as POST to a provided API URL." />
+  <style>
+    
+    :root{
+      --bg: #0f1724;
+      --card: #0b1220;
+      --muted: #9aa4b2;
+      --accent: #7c5cff;
+      --accent-2: #00d4ff;
+      --glass: rgba(255,255,255,0.03);
+      --radius: 14px;
+      --max-width: 980px;
+      --gap: 16px;
+      --shadow: 0 6px 30px rgba(2,6,23,0.6);
+      --success: #24d39b;
+      --danger: #ff6b6b;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color-scheme: dark;
+    }
+
+    * {box-sizing: border-box;}
+    html,body {height:100%;}
+    body{
+      margin:0;
+      background: radial-gradient(1200px 600px at 10% 10%, rgba(124,92,255,0.12), transparent),
+                  radial-gradient(900px 400px at 90% 90%, rgba(0,212,255,0.06), transparent),
+                  var(--bg);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:32px;
+    }
+    
+    /* =========================
+       Layout
+       ========================= */
+    .shell{
+      width: min(100%, var(--max-width));
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius: calc(var(--radius) + 6px);
+      box-shadow: var(--shadow);
+      overflow: auto;
+      display:grid;
+      grid-template-columns: 320px 1fr;
+      gap: 0;
+      min-height: 640px;
+      max-height: 100vh;
+
+    }
+
+    /* Left column: info / history */
+    .sidebar{
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));
+      padding: 20px;
+      border-right:1px solid rgba(255,255,255,0.03);
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .brand{
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+    .logo{
+      width:46px;height:46px;border-radius:10px;
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      display:grid;place-items:center;
+      box-shadow: 0 6px 22px rgba(124,92,255,0.12), inset 0 -6px 20px rgba(0,0,0,0.25);
+      color:white;font-weight:700;font-size:18px;
+    }
+    .brand h1{margin:0;font-size:16px;line-height:1;color:#fff}
+    .brand p{margin:0;font-size:12px;color:var(--muted)}
+
+    .controls{
+      margin-top:8px;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .btn{
+      appearance:none;border:0;padding:8px 12px;border-radius:10px;background:var(--glass);
+      color:var(--muted);font-size:13px;cursor:pointer;
+      transition: transform .12s ease, background .12s;
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{
+      background:linear-gradient(90deg,var(--accent),var(--accent-2));
+      color:white;box-shadow: 0 6px 18px rgba(124,92,255,0.12);
+    }
+
+    .sidebar .hint{font-size:12px;color:var(--muted);margin-top:6px}
+    .history{
+      margin-top:6px;overflow:auto;padding-right:6px;flex:1;
+    }
+    .history-item{
+      background:rgba(255,255,255,0.015);padding:12px;border-radius:10px;margin-bottom:10px;font-size:13px;color:var(--muted);
+    }
+
+    /* Right column: chat area */
+    .chat-area{display:flex;
+      flex-direction:column;
+      min-height:640px;
+    }
+    header.chat-header{
+      padding:18px 20px;border-bottom:1px solid rgba(255,255,255,0.03);display:flex;align-items:center;gap:12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+    }
+    .chat-title h2{margin:0;font-size:18px;color:#fff}
+    .chat-title p{margin:0;font-size:13px;color:var(--muted)}
+
+    /* message list */
+    .messages{
+      padding:20px;
+      flex:1;
+      overflow-y:auto;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(0,0,0,0.02));
+      overflow: auto;
+    }
+    .message{
+      max-width:78%;
+      padding:12px 14px;border-radius:12px;
+      font-size:15px;line-height:1.45;
+      box-shadow: 0 2px 10px rgba(2,6,23,0.45);
+      word-break:break-word;
+      position:relative;
+    }
+    .message.user{
+      align-self:flex-end;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(124,92,255,0.08));
+      color: #fff;border-bottom-right-radius:6px;
+    }
+    .message.bot{
+      align-self:flex-start;background:rgba(255,255,255,0.02);color:var(--muted);
+      border-bottom-left-radius:6px;
+      overflow-y: auto;
+    }
+    .meta{font-size:11px;color:rgba(255,255,255,0.25);margin-top:6px;text-align:right}
+
+    /* input area */
+    .composer{
+      border-top:1px solid rgba(255,255,255,0.03);
+      background: linear-gradient(0deg, rgba(255,255,255,0.02), transparent);
+      display:flex;gap:12px;align-items:flex-end;
+      padding:14px 18px;
+      overflow-y: auto;
+    }
+    form.composer{
+      padding:14px 18px;border-top:1px solid rgba(255,255,255,0.03);display:flex;gap:12px;align-items:flex-end;
+      background: linear-gradient(0deg, rgba(0,0,0,0.02), transparent);
+      
+    }
+    .input-wrap{display:flex;flex:1;gap:8px;align-items:end}
+    textarea#message{
+      width:100%;min-height:48px;max-height:180px;padding:12px;border-radius:12px;border:0;background:rgba(255,255,255,0.02);
+      color: #fff;font-size:15px;resize:vertical;outline:none;
+    }
+    .send{
+      border:0;padding:12px 14px;border-radius:12px;background:linear-gradient(90deg,var(--accent),var(--accent-2));
+      color: white;font-weight:600;cursor:pointer;min-width:64px;
+      display:inline-grid;place-items:center;
+    }
+    .send[aria-busy="true"]{opacity:0.7;cursor:not-allowed}
+
+    /* responsive */
+    @media (max-width:880px){
+      .shell{grid-template-columns: 1fr;min-height:640px}
+      .sidebar{order:2;border-right:0;border-top:1px solid rgba(255,255,255,0.03)}
+      .chat-area{order:1}
+    }
+    @media (max-width:480px){
+      body{padding:16px}
+      .shell{min-height:100vh;border-radius:12px}
+      .logo{width:40px;height:40px}
+      .messages{padding:14px}
+    }
+
+    /* small polished effects */
+    .pulse{
+      display:inline-block;width:8px;height:8px;border-radius:999px;background:var(--accent);
+      box-shadow:0 0 12px rgba(124,92,255,0.35);
+      animation: pulse 1.6s infinite;
+    }
+    @keyframes pulse {0%{transform:scale(.9);opacity:1}50%{transform:scale(1.25);opacity:.6}100%{transform:scale(.95);opacity:1}}
+
+    /* typing indicator */
+    .typing{
+      display:inline-flex;gap:4px;align-items:flex-end;height:18px;
+    }
+    .dot{
+      width:6px;height:6px;border-radius:999px;background:var(--muted);
+      animation: bounce 0.9s infinite ease-in-out;
+    }
+    .dot:nth-child(2){animation-delay:0.12s}
+    .dot:nth-child(3){animation-delay:0.24s}
+    @keyframes bounce {0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)}}
+
+    /* small accessible focus styles */
+    .btn:focus, textarea:focus, .send:focus {outline:3px solid rgba(124,92,255,0.18);outline-offset:3px}
+    /* subtle entry animation */
+    .message{animation: slideIn .18s ease both}
+    @keyframes slideIn {from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none}}
+  </style>
+</head>
+<body>
+  <main class="shell" id="app">
+    
+    <aside class="sidebar" aria-label="Chat sidebar">
+      <div class="brand" aria-hidden="false">
+        <div class="logo" aria-hidden="true">AI</div>
+        <div>
+          <h1>Your Hostel cheif</h1>
+          <p>Minimal • fast • accessible</p>
+        </div>
+      </div>
+
+      <div class="controls" role="toolbar" aria-label="Chat controls">
+        <button class="btn" id="clearBtn" title="Clear conversation">Clear</button>
+        <button class="btn" id="saveBtn" title="Export chat (JSON)">Export</button>
+        <button class="btn primary" id="aboutBtn" title="About this UI">About</button>
+      </div>
+
+      <p class="hint">Recent messages (local)</p>
+
+      <div class="history" id="history" aria-live="polite" tabindex="0">
+        <!-- recent messages as buttons appended here -->
+      </div>
+
+      <p class="hint">Hello this is your AI cheif assistant. How can I help you today?
+          <div class="meta"> ~ Just ask me what to make!</div></p>
+    </aside>
+
+    
+    <section class="chat-area" aria-labelledby="chat-title">
+      <header class="chat-header">
+        <div class="chat-title" id="chat-title">
+          <h2>Food Assistant</h2>
+          <p id="status" aria-live="polite">Ready to chat</p>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <div class="pulse" aria-hidden="true"></div>
+        </div>
+      </header>
+
+      <div class="messages" id="messages" role="log" aria-live="polite" aria-atomic="false">
+        
+        <div class="message bot" id="welcome">
+          Hello this is your AI cheif assistant. How can I help you today?
+          <div class="meta"> Just ask me what to make!</div>
+        </div>
+      </div>
+
+      <!-- composer: accessible form -->
+      <form class="composer" id="composer" aria-label="Chat composer">
+        <div class="input-wrap">
+          <label for="message" class="sr-only" style="position:absolute;left:-9999px;">Message</label>
+          <textarea id="message" name="message" placeholder="Type your message — press Enter to send (Shift+Enter for newline)" autocomplete="off" rows="2" required
+                    aria-required="true"></textarea>
+        </div>
+        <button type="submit" class="send" id="sendBtn" aria-label="Send message" title="Send message">
+          Ask!
+        </button>
+      </form>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+
+  <script>
+    const API_URL = "/chat";
+
+    
+    // Small utilities
+    const $ = (sel) => document.querySelector(sel);
+    const qsAll = (sel) => Array.from(document.querySelectorAll(sel));
+    const messagesEl = $('#messages');
+    const historyEl = $('#history');
+    const composer = $('#composer');
+    const textarea = $('#message');
+    const sendBtn = $('#sendBtn');
+    const statusEl = $('#status');
+    const clearBtn = $('#clearBtn');
+    const saveBtn = $('#saveBtn');
+    const aboutBtn = $('#aboutBtn');
+
+    // Local storage keys
+    const LS_MESSAGES = 'hostel_ai_messages_v1';
+
+    //render markdown
+    function renderMarkdown(mdText){
+  return marked.parse(mdText);
+    }
+
+    // load saved messages on init
+    let conversation = loadConversation();
+
+    function loadConversation(){
+      try {
+        const raw = localStorage.getItem(LS_MESSAGES);
+        if(!raw) return [];
+        const parsed = JSON.parse(raw);
+        if(!Array.isArray(parsed)) return [];
+        return parsed;
+      } catch(e){
+        console.warn('Could not load conversation', e);
+        return [];
+      }
+    }
+    function saveConversation(){
+      try { localStorage.setItem(LS_MESSAGES, JSON.stringify(conversation.slice(-50))); } catch(e){}
+    }
+
+    // UI helpers
+    function formatTime(ts = Date.now()){
+      const d = new Date(ts);
+      return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    }
+
+    function renderMessages(){
+      messagesEl.innerHTML = '';
+      const fragment = document.createDocumentFragment();
+      // welcome message if empty handled in HTML initial node
+      if(conversation.length === 0){
+        // keep default welcome node
+        const node = document.getElementById('welcome');
+        fragment.appendChild(node.cloneNode(true));
+      } else {
+        conversation.forEach(msg => {
+          const el = renderMessageBlock(msg);
+          fragment.appendChild(el);
+        });
+      }
+      messagesEl.appendChild(fragment);
+      // scroll to bottom
+      requestAnimationFrame(()=>messagesEl.scrollTop = messagesEl.scrollHeight);
+      renderHistoryChips();
+    }
+
+    function renderMessageBlock(msg){
+      const wrapper = document.createElement('div');
+      wrapper.className = 'message ' + (msg.role === 'user' ? 'user' : 'bot');
+      wrapper.setAttribute('data-ts', msg.ts || Date.now());
+      wrapper.innerHTML = `
+        <div class="content">${msg.text}</div>
+        <div class="meta">${msg.author || (msg.role==='user'?'You': 'Bot')} • ${formatTime(msg.ts)}</div>
+      `;
+      return wrapper;
+    }
+
+    function renderHistoryChips(){
+      historyEl.innerHTML = '';
+      // show last 8 messages as quick chips
+      const last = conversation.slice(-8).reverse();
+      if(last.length === 0){
+        const p = document.createElement('div');
+        p.className = 'history-item';
+        p.textContent = 'No recent messages';
+        historyEl.appendChild(p);
+        return;
+      }
+      last.forEach(m => {
+        const chip = document.createElement('button');
+        chip.className = 'history-item';
+        chip.type = 'button';
+        chip.title = 'Click to paste this message into the composer';
+        chip.textContent = m.text.length > 80 ? m.text.slice(0,80) + '…' : m.text;
+        chip.onclick = () => {
+          textarea.value = m.text;
+          textarea.focus();
+        };
+        historyEl.appendChild(chip);
+      });
+    }
+
+    function escapeHtml(text){
+      const map = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#039;"};
+      return String(text).replace(/[&<>"']/g, function(m){ return map[m]; });
+    }
+
+    // =========================
+    // Message sending logic
+    // =========================
+    let inflight = false;
+
+    composer.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = textarea.value.trim();
+      if(!text || inflight) return;
+      await sendMessage(text);
+    });
+
+    // allow Enter to send, Shift+Enter newline
+    textarea.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault();
+        composer.requestSubmit();
+      }
+    });
+
+    async function sendMessage(text){
+      // Add user message locally first
+      const userMsg = { role:'user', text, ts: Date.now(), author: 'You' };
+      conversation.push(userMsg);
+      saveConversation();
+      renderMessages();
+      textarea.value = '';
+      textarea.focus();
+
+      // Update UI state
+      setInflight(true, 'Waiting for response…');
+
+      try {
+        const rplyText = await callApi(text);
+        const replyText = marked.parse(rplyText);
+        const botMsg = { role:'bot', text: replyText, ts: Date.now(), author: 'Assistant' };
+        conversation.push(botMsg);
+        saveConversation();
+        renderMessages();
+        setInflight(false, 'Ready to chat');
+      } catch(err){
+        console.error(err);
+        const errMsg = { role:'bot', text: '⚠️ Error: ' + (err.message || 'Request failed'), ts: Date.now(), author: 'Assistant' };
+        conversation.push(errMsg);
+        saveConversation();
+        renderMessages();
+        setInflight(false, 'Error — check console / network');
+      }
+    }
+
+    function setInflight(flag, message){
+      inflight = flag;
+      if(flag){
+        sendBtn.setAttribute('aria-busy','true');
+        sendBtn.disabled = true;
+        textarea.disabled = true;
+        statusEl.textContent = message;
+      } else {
+        sendBtn.removeAttribute('aria-busy');
+        sendBtn.disabled = false;
+        textarea.disabled = false;
+        statusEl.textContent = message;
+      }
+    }
+
+    // =========================
+    // API call — POST JSON
+    // =========================
+    async function callApi(userMessage){
+      // Basic sanity: ensure API URL set
+      if(!API_URL){
+        throw new Error('API_URL is empty. Please set the API_URL constant in the script.');
+      }
+
+      // prepare fetch options
+      const fetchOptions = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // 'Authorization': 'Bearer YOUR_KEY', // <-- if required, add your auth here
+        },
+        body: JSON.stringify({ message: userMessage }),
+      };
+
+      // You can adjust timeout behavior if desired
+      const controller = new AbortController();
+      const timeout = setTimeout(()=>controller.abort(), 30000); // 30s timeout
+      fetchOptions.signal = controller.signal;
+
+      const res = await fetch(API_URL, fetchOptions).catch(err => {
+        if(err.name === 'AbortError') throw new Error('Request timed out (30s)');
+        throw err;
+      }).finally(()=>clearTimeout(timeout));
+
+      if(!res.ok){
+        const text = await res.text().catch(()=>res.statusText);
+        throw new Error(`HTTP ${res.status} — ${text}`);
+      }
+
+      // Expect JSON response:
+      const json = await res.json().catch(()=>{ throw new Error('Invalid JSON from API'); });
+
+      // Support a couple of common response shapes
+      const reply = (json.reply || json.message || json.text || '');
+      if(typeof reply !== 'string') {
+        // if it's an object, try to stringify or access content field
+        if(json.content && typeof json.content === 'string') return json.content;
+        return JSON.stringify(reply);
+      }
+
+      // animate reveal for nicer UX
+      return await revealTextAnimation(reply);
+    }
+
+    // revealTextAnimation: returns the full text after animating the last bot message display
+    function revealTextAnimation(fullText){
+      return new Promise((resolve) => {
+        // append a temporary bot message with empty content and a typing indicator
+        const node = document.createElement('div');
+        node.className = 'message bot';
+        const content = document.createElement('div');
+        content.className = 'content';
+        node.appendChild(content);
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.textContent = 'Assistant • ' + formatTime();
+        node.appendChild(meta);
+
+        // add to DOM
+        messagesEl.appendChild(node);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+
+        // gradually reveal characters (typewriter)
+        let i = 0;
+        const speed = 18 + Math.random() * 22; // variable speed
+        function step(){
+          i++;
+          content.innerHTML = DOMPurify.sanitize(marked.parse(fullText.slice(0,i)));
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+          if(i < fullText.length){
+            requestAnimationFrame(()=>setTimeout(step, speed));
+          } else {
+            // done: replace with canonical message in conversation store on next tick
+            requestAnimationFrame(()=>resolve(fullText));
+          }
+        }
+        // small delay to mimic thinking
+        setTimeout(step, 220);
+      });
+    }
+
+    // =========================
+    // Additional features: clear, export, about
+    // =========================
+    clearBtn.addEventListener('click', ()=>{
+      if(!confirm('Clear local conversation? This removes locally stored history.')) return;
+      conversation = [];
+      saveConversation();
+      renderMessages();
+    });
+
+    saveBtn.addEventListener('click', ()=> {
+      const blob = new Blob([JSON.stringify(conversation, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'conversation.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    aboutBtn.addEventListener('click', ()=>{
+      alert('Hostel AI Chat — Minimal responsive UI\\n\\nThis UI posts { message } as JSON to your API URL.\\nSet the API_URL constant at the top of the script.');
+    });
+
+    // render on load
+    renderMessages();
+
+    // Small accessibility & focus polish
+    textarea.focus();
+
+    // expose for debugging (optional)
+    window.__hostel_chat = {
+      conversation, renderMessages, saveConversation, sendMessage,
+      setApiUrl: (url) => { console.warn('Set API_URL in code — runtime override only for debugging.'); window._API_URL = url; }
+    };
+  </script>
+</body>
+</html>
